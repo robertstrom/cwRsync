@@ -5,9 +5,6 @@ REM Specify where to find rsync and related files
 SET CWRSYNCHOME=%~dp0
 SET PATH=%CWRSYNCHOME%\bin;%PATH%
 
-REM Get a filename-friendly timestamp
-:: for /f "tokens=*" %%a in ('powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'"') do set "LogStamp=%%a"
-:; SET LOG_PATH=C:\Users\rstrom\rsync-logs\rsync_%LogStamp%.log
 
 @echo off
 SETLOCAL
@@ -30,8 +27,14 @@ SET COMMON=-raivvv --no-owner --no-group --no-perms --protect-args
 SET SAFETY=--delete-after --max-delete=50 --fuzzy
 
 
+REM --- PRE-CHECK: VERIFY E: DRIVE IS MOUNTED ---
+IF NOT EXIST "E:\QNAP-1_HomeDirFiles\" (
+    echo [ERROR] %LogStamp% : E: Drive not detected. Aborting Sync. >> "%LOG_PATH%"
+    echo E: Drive not detected! Check connection.
+    exit /b
+)
 
-REM --- SETTINGS ---
+REM --- PLEX SETTINGS ---
 SET SSH_KEY_PATH=C:\Users\rstrom\.ssh\id_ed25519_cwrsync
 SET RSYNC_SSH_KEY=/cygdrive/c/Users/rstrom/.ssh/id_ed25519_cwrsync
 SET PLEX_HOST=rstrom@192.168.0.36
