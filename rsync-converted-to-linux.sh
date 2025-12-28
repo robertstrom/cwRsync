@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Add cron job to schedule the rsync
+##  0 2 * * * /bin/bash /home/rstrom/sync_backups.sh
 # --- CONFIGURATION ---
 SOURCE_USER="rstrom"
 SOURCE_IP="192.168.0.99"
