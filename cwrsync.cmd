@@ -6,14 +6,59 @@ SET CWRSYNCHOME=%~dp0
 SET PATH=%CWRSYNCHOME%\bin;%PATH%
 
 REM Get a filename-friendly timestamp
-for /f "tokens=*" %%a in ('powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'"') do set "LogStamp=%%a"
+:: for /f "tokens=*" %%a in ('powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'"') do set "LogStamp=%%a"
+:; SET LOG_PATH=C:\Users\rstrom\rsync-logs\rsync_%LogStamp%.log
+
+@echo off
+SETLOCAL
+
+REM 1. Get a safe filename date (YYYYMMDD) - No colons or hyphens
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd'"`) do set "FileDate=%%i"
+
+REM 2. Get the log timestamp (Keep this for the local log filename)
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'"`) do set "LogStamp=%%i"
+
 SET LOG_PATH=C:\Users\rstrom\rsync-logs\rsync_%LogStamp%.log
+
+SET LOG_PATH=C:\Users\rstrom\rsync-logs\rsync_!LogStamp!.log
 
 REM --- SHARED SETTINGS ---
 SET LOG=--log-file=/cygdrive/c/Users/rstrom/rsync-logs/rsync_%LogStamp%.log
 SET SSH_KEY=-e "ssh -i /cygdrive/c/Users/rstrom/.ssh/id_ed25519_cwrsync"
+SET SSH_CMD=ssh -i %SSH_KEY%
 SET COMMON=-raivvv --no-owner --no-group --no-perms --protect-args
 SET SAFETY=--delete-after --max-delete=50 --fuzzy
+
+
+
+REM --- SETTINGS ---
+SET SSH_KEY_PATH=C:\Users\rstrom\.ssh\id_ed25519_cwrsync
+SET RSYNC_SSH_KEY=/cygdrive/c/Users/rstrom/.ssh/id_ed25519_cwrsync
+SET PLEX_HOST=rstrom@192.168.0.36
+
+REM --- 2. PLEX REMOTE OPERATIONS ---
+echo *** Stopping Plex Media Server...
+ssh -i "%SSH_KEY_PATH%" %PLEX_HOST% "sudo systemctl stop plexmediaserver"
+
+echo *** Creating Plex Backup Tarball...
+ssh -i "%SSH_KEY_PATH%" %PLEX_HOST% "sudo tar -czf /home/rstrom/PlexBackup_%FileDate%.tar.gz /var/lib/plexmediaserver/Library/Application\ Support/Plex\ Media\ Server/"
+
+echo *** Verifying Backup File Exists...
+ssh -i "%SSH_KEY_PATH%" %PLEX_HOST% "ls -lh /home/rstrom/PlexBackup_%FileDate%.tar.gz"
+IF %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Tarball was not found! Restarting Plex and Aborting.
+    ssh -i "%SSH_KEY_PATH%" %PLEX_HOST% "sudo systemctl start plexmediaserver"
+    exit /b
+)
+
+echo *** Restarting Plex Media Server...
+ssh -i "%SSH_KEY_PATH%" %PLEX_HOST% "sudo systemctl start plexmediaserver"
+
+echo *** Copying Plex Backup to E: Drive...
+rsync -iv %LOG% --protect-args -e "ssh -i %RSYNC_SSH_KEY%" %PLEX_HOST%:/home/rstrom/PlexBackup_%FileDate%.tar.gz "/cygdrive/e/Plex_Config_Backups/"
+
+echo *** Deleting Plex Backups older than 10 days on Remote Host...
+%SSH_CMD% rstrom@192.168.0.36 "sudo find . -maxdepth 1 -name 'PlexBackup_*.tar.gz' -mtime +10 -delete"
 
 REM --- GROUP 1: VM IMAGES & LARGE FILES (-W for Whole File) ---
 SET VM_FLAGS=%COMMON% -W --info=all
@@ -64,7 +109,7 @@ rsync %HOME_FLAGS% %SAFETY% %LOG% %SSH_KEY% rstrom@192.168.0.99:"/share/homes/rs
 REM --- CLEANUP ---
 echo. >> "%LOG_PATH%"
 echo *** CLEANUP LOG: Deleting log files older than 30 days *** >> "%LOG_PATH%"
-powershell -NoProfile -Command "Get-ChildItem -Path 'C:\Users\rstrom\rsync-logs' -Filter 'rsync_*.log' | foreach { if ($_.LastWriteTime -lt (Get-Date).AddDays(-30)) { Write-Output \"Deleting old log: $($_.Name)\"; Remove-Item $_.FullName -Force } }" >> "%LOG_PATH%" 2>&1
+powershell -NoProfile -Command "Get-ChildItem -Path 'C:\Users\rstrom\rsync-logs' -Filter 'rsync_*.log' | foreach { if ($_.LastWriteTime -lt (Get-Date).AddDays(-30)) { Write-Output \"Deleting old log: $($_.Name)\"; Remove-Item $_.FullName -Force -WhatIf} }" >> "%LOG_PATH%" 2>&1
 
 echo Sync Complete.
 ENDLOCAL
