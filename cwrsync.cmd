@@ -63,8 +63,8 @@ rsync %HOME_FLAGS% %SAFETY% %LOG% %SSH_KEY% rstrom@192.168.0.99:"/share/homes/rs
 
 REM --- CLEANUP ---
 echo. >> "%LOG_PATH%"
-echo *** CLEANUP LOG: Deleting log files older than 7 days *** >> "%LOG_PATH%"
-powershell -NoProfile -Command "Get-ChildItem -Path 'C:\Users\rstrom\rsync-logs' -Filter 'rsync_*.log' | foreach { if ($_.LastWriteTime -lt (Get-Date).AddDays(-7)) { Write-Output \"Deleting old log: $($_.Name)\"; Remove-Item $_.FullName -Force } }" >> "%LOG_PATH%" 2>&1
+echo *** CLEANUP LOG: Deleting log files older than 30 days *** >> "%LOG_PATH%"
+powershell -NoProfile -Command "Get-ChildItem -Path 'C:\Users\rstrom\rsync-logs' -Filter 'rsync_*.log' | foreach { if ($_.LastWriteTime -lt (Get-Date).AddDays(-30)) { Write-Output \"Deleting old log: $($_.Name)\"; Remove-Item $_.FullName -Force } }" >> "%LOG_PATH%" 2>&1
 
 echo Sync Complete.
 ENDLOCAL
