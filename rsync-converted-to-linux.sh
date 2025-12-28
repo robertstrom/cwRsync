@@ -76,7 +76,7 @@ rsync $HOME_FLAGS $SAFETY $LOG_OPTS -e "$SSH_CMD" "$SOURCE_USER@$SOURCE_IP:/shar
 rsync $HOME_FLAGS $SAFETY $LOG_OPTS -e "$SSH_CMD" "$SOURCE_USER@$SOURCE_IP:/share/homes/rstrom/Win10_Work_Backup/" "$DEST_BASE/Win10_Work_Backup/"
 
 # --- CLEANUP ---
-echo "*** CLEANUP LOG: Deleting log files older than 7 days ***" >> "$LOG_FILE"
-find "$LOG_DIR" -name "rsync_*.log" -type f -mtime +7 -exec echo "Deleting old log: {}" \; -exec rm {} \; >> "$LOG_FILE" 2>&1
+echo "*** CLEANUP LOG: Deleting log files older than 30 days ***" >> "$LOG_FILE"
+find "$LOG_DIR" -name "rsync_*.log" -type f -mtime +30 -exec echo "Deleting old log: {}" \; -exec rm {} \; >> "$LOG_FILE" 2>&1
 
 echo "Sync Complete: $(date)" >> "$LOG_FILE"
